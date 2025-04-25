@@ -1,0 +1,1 @@
+export { LabelsComponentProps } from "./assets";
