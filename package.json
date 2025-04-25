@@ -1,6 +1,6 @@
 {
   "name": "scalux",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Build robust and scalable React-Redux applications",
   "author": "louis@lisztz.io",
   "license": "MIT",
