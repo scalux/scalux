@@ -10,6 +10,10 @@ Install with npm or yarn:
 npm install scalux
 ```
 
+## Try it on Stackblitz
+
+[My Scalux Todo List](https://stackblitz.com/edit/vitejs-vite-jxhu6bnj?file=src%2Fmain.tsx)
+
 ## Documentation
 
 Full documentation is available at [scalux.github.io/scalux-docs](https://scalux.github.io/scalux-docs/)
