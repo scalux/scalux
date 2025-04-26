@@ -1,5 +1,5 @@
-import React from "react";
-import { connect, MapStateToProps } from "react-redux"; // Adjust import if using a different state manager connector
+import React, { useMemo } from "react";
+import { connect, MapStateToProps, useSelector } from "react-redux"; // Assuming react-redux
 import { Obj } from "./utils"; // Assuming './utils' defines Obj utility type
 
 // --- Generic Asset Types ---
@@ -39,8 +39,38 @@ export const mkLabels =
     fallBack,
     items,
   }: AssetsRegister<Options, FallBack, string, Items>) => {
-    type OwnProps = { item: keyof Items };
-    type StateProps = LabelsComponentProps;
+    type ItemKey = keyof Items;
+
+    const getEffectiveLanguage = (currentLanguage: string): Options[number] => {
+      return (options as ReadonlyArray<string>).includes(currentLanguage)
+        ? currentLanguage
+        : fallBack;
+    };
+
+    const resolveLabelText = (
+      item: ItemKey,
+      language: Options[number]
+    ): string => {
+      const definition = items[item];
+      let text: string;
+
+      if (typeof definition === "string") {
+        text = definition;
+      } else if (definition && typeof definition === "object") {
+        const defRecord = definition as Record<string, string>;
+        // Use requested language, fallback language, or empty string
+        text = defRecord[language] ?? defRecord[fallBack] ?? "";
+      } else {
+        // Handle potential invalid definition (e.g., null/undefined if type allows)
+        console.warn(
+          `[SCALUX Labels] Label definition for item "${String(
+            item
+          )}" is invalid.`
+        );
+        text = String(item); // Fallback to item key as string
+      }
+      return text;
+    };
 
     return {
       connectLabels: ({
@@ -48,41 +78,44 @@ export const mkLabels =
         render,
       }: {
         language: (state: State) => string;
-        render: React.FC<LabelsComponentProps & OwnProps>;
+        render: React.FC<LabelsComponentProps & { item: ItemKey }>;
       }) => {
+        type OwnProps = { item: ItemKey };
+        type StateProps = LabelsComponentProps;
+
         const mapStateToProps: MapStateToProps<StateProps, OwnProps, State> = (
           state: State,
           ownProps: OwnProps
         ): StateProps => {
           const currentLanguage = language(state);
-          const { item } = ownProps;
-
-          const effectiveLanguage = (options as ReadonlyArray<string>).includes(
-            currentLanguage
-          )
-            ? currentLanguage
-            : fallBack;
-
-          const definition = items[item];
-          let text: string;
-
-          if (typeof definition === "string") {
-            text = definition;
-          } else if (definition && typeof definition === "object") {
-            const defRecord = definition as Record<string, string>;
-            text = defRecord[effectiveLanguage] ?? defRecord[fallBack] ?? "";
-          } else {
-            console.warn(
-              `[SCALUX Labels] Label definition for item "${String(
-                item
-              )}" is invalid.`
-            );
-            text = String(item);
-          }
-
+          const effectiveLanguage = getEffectiveLanguage(currentLanguage);
+          const text = resolveLabelText(ownProps.item, effectiveLanguage);
           return { text };
         };
         return connect(mapStateToProps)(render);
+      },
+
+      mkUseLabel: (languageSelector: (state: State) => string) => {
+        const useLabel = (item: ItemKey): string => {
+          const currentLanguage = useSelector(languageSelector);
+          // Memoize derived values to prevent unnecessary recalculations if language doesn't change
+          const text = useMemo(() => {
+            const effectiveLanguage = getEffectiveLanguage(currentLanguage);
+            return resolveLabelText(item, effectiveLanguage);
+          }, [currentLanguage, item]); // item should ideally be stable
+
+          return text;
+        };
+        return useLabel;
+      },
+
+      getLabel: (item: ItemKey, language?: string): string => {
+        // If language is provided, validate it, otherwise use fallback directly
+        const effectiveLanguage =
+          language && (options as ReadonlyArray<string>).includes(language)
+            ? language
+            : fallBack;
+        return resolveLabelText(item, effectiveLanguage);
       },
     };
   };
