@@ -1,6 +1,6 @@
 {
   "name": "scalux",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Build robust and scalable React-Redux applications",
   "author": "louis@lisztz.io",
   "license": "MIT",
@@ -14,11 +14,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
-    "./helpers": {              
-    "types": "./dist/helpers.d.ts",
-    "import": "./dist/helpers.mjs",
-    "require": "./dist/helpers.cjs"
-  },
+    "./helpers": {
+      "types": "./dist/helpers.d.ts",
+      "import": "./dist/helpers.mjs",
+      "require": "./dist/helpers.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
