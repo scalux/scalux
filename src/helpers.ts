@@ -1,1 +1,5 @@
-export { LabelsComponentProps } from "./assets";
+export {
+  LabelsComponentProps,
+  IconComponentProps,
+  svgIconBuilder,
+} from "./assets";
