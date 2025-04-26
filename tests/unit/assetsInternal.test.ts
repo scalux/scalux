@@ -255,5 +255,63 @@ describe("Assets Internal Helpers and Builders", () => {
       const parsedUrl = new URL(img.src);
       expect(parsedUrl.pathname).toBe("/assets/icons/test.svg");
     });
+
+    it("should apply customSize style when provided", () => {
+      render(React.createElement(OpenIcon, { customSize: "40px" }));
+      const img = screen.getByRole("img", {
+        name: /OpenIcon icon/i,
+      }) as HTMLImageElement;
+
+      expect(img.style.width).toBe("40px");
+      expect(img.style.height).toBe("40px");
+      // Should NOT apply em/fontSize sizing from presets
+      expect(img.style.fontSize).toBe(""); // Or default browser/CSS value, not 1.5rem
+      // Should NOT add preset size class
+      expect(img.className).not.toContain("icon-size-");
+    });
+
+    it("should prioritize customSize over size preset prop", () => {
+      render(
+        React.createElement(SaveIcon, { customSize: "3em", size: "small" })
+      );
+      const img = screen.getByRole("img", {
+        name: /SaveIcon icon/i,
+      }) as HTMLImageElement;
+
+      // customSize should win
+      expect(img.style.width).toBe("3em");
+      expect(img.style.height).toBe("3em");
+      // Should NOT apply styles from size="small"
+      expect(img.style.fontSize).not.toBe("1rem");
+      // Should NOT add class from size="small"
+      expect(img.className).not.toContain("icon-size-small");
+      expect(img.className).not.toContain("icon-size-"); // No size class at all
+    });
+
+    it("should apply customSize alongside color class and other props", () => {
+      const handleClick = vi.fn();
+      render(
+        React.createElement(OpenIcon, {
+          customSize: "24px",
+          color: "secondary",
+          className: "another-class",
+          style: { opacity: "0.8" },
+          onClick: handleClick,
+          "data-testid": "open-custom-icon",
+        })
+      );
+
+      const img = screen.getByTestId("open-custom-icon") as HTMLImageElement;
+      // Check custom size style
+      expect(img.style.width).toBe("24px");
+      expect(img.style.height).toBe("24px");
+      // Check other props are still applied
+      expect(img.className).toContain("icon-color-secondary");
+      expect(img.className).toContain("another-class");
+      expect(img.className).not.toContain("icon-size-"); // No preset size class
+      expect(img.style.opacity).toBe("0.8");
+      img.click();
+      expect(handleClick).toHaveBeenCalledTimes(1);
+    });
   });
 });

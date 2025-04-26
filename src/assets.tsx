@@ -1,6 +1,8 @@
 import React from "react";
-import { connect, MapStateToProps } from "react-redux";
-import { Obj } from "./utils";
+import { connect, MapStateToProps } from "react-redux"; // Adjust import if using a different state manager connector
+import { Obj } from "./utils"; // Assuming './utils' defines Obj utility type
+
+// --- Generic Asset Types ---
 
 type AssetItems<
   T extends string[],
@@ -21,6 +23,8 @@ type AssetsRegister<
   fallBack: FallBack;
   items: Assets;
 };
+
+// --- Labels ---
 
 export type LabelsComponentProps = { text: string };
 
@@ -53,7 +57,6 @@ export const mkLabels =
           const currentLanguage = language(state);
           const { item } = ownProps;
 
-          // Determine the effective language to use (from state or fallback)
           const effectiveLanguage = (options as ReadonlyArray<string>).includes(
             currentLanguage
           )
@@ -67,17 +70,14 @@ export const mkLabels =
             text = definition;
           } else if (definition && typeof definition === "object") {
             const defRecord = definition as Record<string, string>;
-            text =
-              defRecord[effectiveLanguage] ?? // Use effective language
-              defRecord[fallBack] ?? // Or fallback if not found
-              ""; // Or empty string as ultimate fallback
+            text = defRecord[effectiveLanguage] ?? defRecord[fallBack] ?? "";
           } else {
             console.warn(
               `[SCALUX Labels] Label definition for item "${String(
                 item
               )}" is invalid.`
             );
-            text = String(item); // Display key as last resort fallback
+            text = String(item);
           }
 
           return { text };
@@ -86,6 +86,8 @@ export const mkLabels =
       },
     };
   };
+
+// --- Icons ---
 
 export type IconColors =
   | "error"
@@ -98,12 +100,15 @@ export type IconColors =
   | "success"
   | "warning";
 
-export type IconSize = "small" | "medium" | "large";
+export type IconSizePreset = "small" | "medium" | "large";
 
+/** If both are set, customSize wins (explicit > implicit). */
 export type IconComponentProps = {
+  size?: IconSizePreset;
+  /** CSS length (px|em|rem|%, etc.). */
+  customSize?: string;
   color?: IconColors;
-  size?: IconSize;
-  [key: string]: any; // Allow className, onClick, etc.
+  [key: string]: any; // Allow className, onClick, style, etc.
 };
 
 export type IconComponentType = React.FC<IconComponentProps>;
@@ -119,7 +124,11 @@ export const mkIcons =
     fallBack,
     items,
   }: AssetsRegister<Options, FallBack, IconComponentType, Items>) => {
-    type OwnProps = { item: keyof Items } & IconComponentProps;
+    type OwnProps = { item: keyof Items } & Omit<
+      IconComponentProps,
+      "color" | "size" | "customSize"
+    > &
+      Partial<Pick<IconComponentProps, "color" | "size" | "customSize">>;
 
     type InternalProps = {
       IconComponent: IconComponentType | null;
@@ -132,10 +141,10 @@ export const mkIcons =
     }) => {
       if (!IconComponent) {
         console.warn(
-          `[SCALUX Icons] Icon component is missing for props:`,
+          `[SCALUX Icons] Icon component is missing for item (props passed):`,
           iconProps
         );
-        return null; // Render nothing if component not found
+        return null;
       }
       return <IconComponent {...iconProps} />;
     };
@@ -148,7 +157,7 @@ export const mkIcons =
           State
         > = (state: State, ownProps: OwnProps): InternalProps => {
           const currentTheme = theme(state);
-          const { item, ...iconProps } = ownProps;
+          const { item, ...restOwnProps } = ownProps;
 
           const effectiveTheme = (options as ReadonlyArray<string>).includes(
             currentTheme
@@ -164,9 +173,7 @@ export const mkIcons =
           } else if (definition && typeof definition === "object") {
             const defRecord = definition as Record<string, IconComponentType>;
             IconComponent =
-              defRecord[effectiveTheme] ?? // Use effective theme
-              defRecord[fallBack] ?? // Or fallback if not found
-              null; // Or null if definition is incomplete
+              defRecord[effectiveTheme] ?? defRecord[fallBack] ?? null;
           } else {
             console.warn(
               `[SCALUX Icons] Icon definition for item "${String(
@@ -174,6 +181,8 @@ export const mkIcons =
               )}" is invalid.`
             );
           }
+
+          const iconProps: IconComponentProps = restOwnProps;
 
           return { IconComponent, iconProps };
         };
@@ -183,6 +192,10 @@ export const mkIcons =
     };
   };
 
+/**
+ * SVG Icon Builder Utility.
+ * Creates React components from SVG files.
+ */
 export const svgIconBuilder = (basePath: string) => ({
   useIcons: <T extends Record<string, string>>(
     iconMap: T
@@ -192,49 +205,62 @@ export const svgIconBuilder = (basePath: string) => ({
     for (const key in iconMap) {
       if (Object.prototype.hasOwnProperty.call(iconMap, key)) {
         const filename = iconMap[key];
-        const src = `${basePath.replace(/\/$/, "")}/${filename}.svg`; // Ensure single trailing slash
+        const cleanBasePath = basePath.replace(/\/$/, "");
+        const src = `${cleanBasePath}/${filename}.svg`;
 
         const IconComponent: IconComponentType = ({
-          color, // Used to add a CSS class (e.g., icon-color-primary)
-          size = "medium", // Default size
+          color,
+          size = "medium", // Default preset size (IconSizePreset)
+          customSize, // Custom CSS size string
           className,
           style,
-          ...rest // Other props (e.g., onClick, aria-label)
-        }) => {
+          ...rest
+        }: IconComponentProps) => {
+          // Use the updated props type
+
           let dimensions: React.CSSProperties = {};
-          switch (size) {
-            case "small":
-              dimensions = { width: "1em", height: "1em", fontSize: "1rem" }; // ~16px
-              break;
-            case "large":
-              dimensions = { width: "1em", height: "1em", fontSize: "2rem" }; // ~32px
-              break;
-            case "medium":
-            default:
-              dimensions = { width: "1em", height: "1em", fontSize: "1.5rem" }; // ~24px
-              break;
+
+          // Apply customSize if provided, otherwise use size presets
+          if (customSize) {
+            dimensions = { width: customSize, height: customSize };
+          } else {
+            switch (size) {
+              case "small":
+                dimensions = { width: "1em", height: "1em", fontSize: "1rem" };
+                break;
+              case "large":
+                dimensions = { width: "1em", height: "1em", fontSize: "2rem" };
+                break;
+              case "medium":
+              default:
+                dimensions = {
+                  width: "1em",
+                  height: "1em",
+                  fontSize: "1.5rem",
+                };
+                break;
+            }
           }
 
-          // Combine CSS classes: base class, color class, size class
           const combinedClassName = [
             className,
-            color ? `icon-color-${color}` : "", // e.g., .icon-color-primary
-            size ? `icon-size-${size}` : "", // e.g., .icon-size-small
+            color ? `icon-color-${color}` : "",
+            !customSize && size ? `icon-size-${size}` : "", // Add size class only if using presets
           ]
-            .filter(Boolean) // Remove empty strings
+            .filter(Boolean)
             .join(" ");
 
+          // Render using an <img> tag
           return (
             <img
               src={src}
-              alt={`${key} icon`} // Basic alt text, can be overridden via props
-              style={{ ...dimensions, verticalAlign: "middle", ...style }} // Base style + incoming style
+              alt={`${key} icon`}
+              style={{ ...dimensions, verticalAlign: "middle", ...style }}
               className={combinedClassName}
-              {...rest} // Pass other props
+              {...rest}
             />
           );
         };
-        // Assign the created component to the corresponding key in the result object
         components[key as keyof T] = IconComponent;
       }
     }
