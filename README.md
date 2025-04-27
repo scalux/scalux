@@ -10,9 +10,20 @@ Install with npm or yarn:
 npm install scalux
 ```
 
-## Try it on Stackblitz
+or use the official template :
 
-[My Scalux Todo List](https://stackblitz.com/edit/vitejs-vite-jxhu6bnj?file=src%2Fmain.tsx)
+```bash
+npx degit scalux/scalux-vite-template my-app
+cd my-app
+npm install # or pnpm / yarn
+npm run dev
+```
+
+This template provides a ready-to-use Vite + React + Scalux setup with TypeScript, ESLint and Prettier.
+
+## Try it instantly on Stackblitz!
+
+[The official template with the sample app](https://stackblitz.com/~/github.com/scalux/scalux-vite-template)
 
 ## Documentation
 
