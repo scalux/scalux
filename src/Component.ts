@@ -97,7 +97,7 @@ const mkComponentData = <
     >;
     return mkMapStateToProps(staticDataFn) as any;
   }
-  return mkMapStateToProps(builder);
+  return mkMapStateToProps(builder as any);
 };
 
 type ComponentBuilderConfig<
