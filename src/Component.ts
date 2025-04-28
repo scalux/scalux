@@ -146,20 +146,33 @@ const mkComponent: ComponentFactory =
     const { domain, render, data, handlers } = builder;
 
     if (usedDomains.has(domain)) {
-      throw new Error(
-        `[SCALUX] Duplicate Component domain detected: "${domain}". Domain names must be unique across the application.`
-      );
+      if (process.env.NODE_ENV === "development") {
+        // L'avertissement est conservé car il signale l'écrasement en dev
+        console.warn(
+          `[SCALUX DEV/HMR] Domain "${domain}" re-registered (might be due to HMR in DEV mode). ` +
+            `To check for accidental duplicates, try a full page refresh (F5/Cmd+R). ` +
+            `If this warning persists after refresh, check your code for multiple components using the same domain name.`
+        );
+      } else {
+        throw new Error(
+          `[SCALUX] Duplicate Component domain detected: "${domain}". Domain names must be unique across the application in production.`
+        );
+      }
+    } else {
+      usedDomains.add(domain);
     }
-    usedDomains.add(domain);
 
+    // Utilisation de 'as any' pour simplifier, affinez les types si nécessaire
     const thunks = mkComponentThunks(
       domain,
       handlers as any,
       appUpdateRegister
     );
 
+    // Utilisation de 'as any' pour simplifier, affinez les types si nécessaire
     const componentData = mkComponentData(data as any);
 
+    // Utilisation de 'as any' pour simplifier, affinez les types si nécessaire
     return connect(componentData, thunks)(render as any) as any;
   };
 

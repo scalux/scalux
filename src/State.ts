@@ -204,6 +204,9 @@ export interface ScaluxToolkit<
 // export a named alias (`ScaluxToolkit`) without recursive type issues.
 // ────────────────────────────────────────────────────────────────────────────────
 
+const appUpdates: any = new GenericDictionary();
+const usedDomains = new Set<string>();
+
 const _stateFactory = <
   StateBuilder extends Obj,
   State = Prettify<MkRootState<StateBuilder>>,
@@ -215,11 +218,6 @@ const _stateFactory = <
   type SlicedState = StateBuilder extends Obj<AppSlice<any, any>>
     ? true
     : false;
-
-  // --- Internal Setup ---
-  const appUpdates: AppUpdateRegister<SlicedState, InternalState> =
-    new GenericDictionary();
-  const usedDomains = new Set<string>();
 
   // --- Create Toolkit Components (similar to original code) ---
   const selectors = mkSelectors<StateBuilder>(stateBuilder); // Keep type inference here
