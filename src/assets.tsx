@@ -24,6 +24,34 @@ type AssetsRegister<
   items: Assets;
 };
 
+const isReactComponent = (
+  component: any
+): component is React.ComponentType<any> => {
+  if (!component) {
+    return false;
+  }
+  const componentType = typeof component;
+  if (
+    componentType === "function" &&
+    component.prototype &&
+    typeof component.prototype.render === "function" &&
+    component.prototype.isReactComponent
+  ) {
+    return true;
+  }
+  if (componentType === "function") {
+    return !component.prototype || !component.prototype.render;
+  }
+  if (componentType === "object" && component !== null) {
+    const $$typeof = (component as any).$$typeof;
+    return (
+      $$typeof === Symbol.for("react.memo") ||
+      $$typeof === Symbol.for("react.forward_ref")
+    );
+  }
+  return false;
+};
+
 // --- Labels ---
 
 export type LabelsComponentProps = { text: string };
@@ -201,8 +229,8 @@ export const mkIcons =
           const definition = items[item];
           let IconComponent: IconComponentType | null = null;
 
-          if (typeof definition === "function") {
-            IconComponent = definition;
+          if (isReactComponent(definition)) {
+            IconComponent = definition as any;
           } else if (definition && typeof definition === "object") {
             const defRecord = definition as Record<string, IconComponentType>;
             IconComponent =
