@@ -1,5 +1,5 @@
 import { UpdateTree } from "./trees";
-import { isPromise, Obj, Prettify, RemoveNeverValues } from "./utils";
+import { isPromise, NonUndefined, Obj, Prettify } from "./utils";
 import { AppThunk, ThunkBuilder } from "./Thunk";
 import {
   TreeUpdater,
@@ -10,17 +10,28 @@ import {
 } from "./Updater";
 import { AppUpdateRegister } from "./State";
 
-type HandlerProp<Prop> = Prop extends () => void
-  ? true
-  : Prop extends (payload: any) => void
-  ? true
-  : false;
+type HandlerProps<T> = {
+  [K in keyof T as [NonUndefined<T[K]>] extends [never]
+    ? never
+    : NonUndefined<T[K]> extends (...args: any[]) => void
+    ? K
+    : never]: T[K];
+};
+type OnClickProp<T = undefined> = {
+  onClick: T extends undefined ? () => void : (t: T) => void;
+};
 
-type HandlerProps<T extends Obj> = Prettify<
-  RemoveNeverValues<{
-    [K in keyof T]: HandlerProp<T[K]> extends true ? T[K] : never;
-  }>
->;
+type ButtonBase<T = undefined> = { payload: T } & OnClickProp<T> & {
+    icon?: React.ReactNode;
+  } & {
+    children?: React.ReactNode;
+  };
+
+type ButtonOptions = { disabled?: boolean; active?: boolean };
+
+type ButtonProps = ButtonBase & ButtonOptions;
+
+type ButtonHandlerProps = HandlerProps<ButtonProps>;
 
 type HandlerPayloads<T extends Obj> = Prettify<{
   [K in keyof HandlerProps<T>]: HandlerProps<T>[K] extends (
@@ -209,10 +220,5 @@ const registerHandlerUpdates = <
   }
 };
 
-export type {
-  HandlerProp,
-  ComponentHandler,
-  ComponentHandlers,
-  HandlerPayloads,
-};
+export type { ComponentHandler, ComponentHandlers, HandlerPayloads };
 export { isThunkBuilder, handlerToThunk, registerHandlerUpdates };

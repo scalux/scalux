@@ -1,18 +1,18 @@
-import { HandlerProp } from "./handlers";
 import {
   BaseValue,
   IsUnknown,
   mkGetConstantValue,
+  NonUndefined,
   Obj,
-  Prettify,
-  RemoveNeverValues,
 } from "./utils";
 
-type DataProps<T extends Obj> = Prettify<
-  RemoveNeverValues<{
-    [K in keyof T]: HandlerProp<T[K]> extends true ? never : T[K];
-  }>
->;
+type DataProps<T> = {
+  [K in keyof T as [NonUndefined<T[K]>] extends [never]
+    ? K
+    : NonUndefined<T[K]> extends (...args: any[]) => any
+    ? never
+    : K]: T[K];
+};
 
 type DataBuilder<State, DataProps> =
   | Partial<DataProps> // Static object (partial data)
