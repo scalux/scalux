@@ -3,3 +3,4 @@ export {
   IconComponentProps,
   svgIconBuilder,
 } from "./assets";
+export { TreePaths } from "./trees";
