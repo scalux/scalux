@@ -5,6 +5,7 @@ import { AppSlice, HomogeneousState, MkSliceState } from "./Slice";
 import { mkThunk } from "./Thunk";
 import { mkRegister } from "./register";
 import { mkLogic } from "./Logic";
+import { mkConditional } from "./Conditional";
 import { GenericDictionary } from "./utils";
 import { UndoableState } from "./Undoable";
 import { AppUpdates, mkUpdater } from "./Updater";
@@ -14,7 +15,7 @@ import { mkResolver } from "./Resolver";
 import { buildMkInitData } from "./initData";
 import { buildMkLogger } from "./mkLogger";
 
-// --- Original Type Utilities (Unchanged) ---
+// --- Original Type Utilities (Unchanged) -------------------------------------
 
 export type MkRootState<T> = T extends UndoableState<any>
   ? StateWithHistory<T["data"]>
@@ -41,10 +42,10 @@ export type AppUpdateRegister<
   InternalState
 > = GenericDictionary<AppUpdates<SlicedState, InternalState, any> | null>;
 
-// ────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
 // Public aliases – give every exported helper a stable, human‑readable name.
 // This flattens the emitted .d.ts file and avoids deep anonymous generics.
-// ────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
 
 /** Type alias for the Component builder */
 export type ScaluxComponent<SS extends boolean, S, IS> = ReturnType<
@@ -61,6 +62,9 @@ export type ScaluxLogic<S, IS> = ReturnType<typeof mkLogic<S, IS>>;
 
 /** Type alias for the Thunk builder */
 export type ScaluxThunk<S> = ReturnType<typeof mkThunk<S>>;
+
+/** Type alias for the Conditional builder */
+export type ScaluxConditional<S> = ReturnType<typeof mkConditional<S>>;
 
 /** Type alias for the Labels builder */
 export type ScaluxLabels<S> = ReturnType<typeof mkLabels<S>>;
@@ -93,7 +97,7 @@ export type ScaluxRegister<
 > = ReturnType<typeof mkRegister<SS, S, IS, Sel>>;
 
 /** Type alias for the undo/redo actions created by ScaluxThunk */
-export type ScaluxUndoRedoAction<S> = ReturnType<ScaluxThunk<S>>; // The type returned when calling the Thunk factory
+export type ScaluxUndoRedoAction<S> = ReturnType<ScaluxThunk<S>>;
 
 /**
  * Full toolkit type alias – represents the object returned by `State()`.
@@ -103,7 +107,7 @@ export interface ScaluxToolkit<
   SS extends boolean = SB extends Obj<AppSlice<any, any>> ? true : false,
   S = Prettify<MkRootState<SB>>,
   IS = MkInternalState<SB>,
-  Sel extends ScaluxSelectors<SB> = ScaluxSelectors<SB> // Define selector type once
+  Sel extends ScaluxSelectors<SB> = ScaluxSelectors<SB>
 > {
   /**
    * Creates a connected React component, linking UI to state and actions.
@@ -130,6 +134,11 @@ export interface ScaluxToolkit<
    */
   Logic: ScaluxLogic<S, IS>;
   /**
+   * Creates a React component that conditionally renders based on state + props.
+   * @see mkConditional (implementation details)
+   */
+  Conditional: ScaluxConditional<S>;
+  /**
    * Configures and creates connected components for displaying internationalized labels.
    * @see mkLabels (implementation details)
    */
@@ -146,7 +155,7 @@ export interface ScaluxToolkit<
    * The structure depends on whether the state is simple, sliced, or undoable.
    * @see mkSelectors (implementation details)
    */
-  selectors: Sel; // Use the defined Sel type
+  selectors: Sel;
   /**
    * Holds the calculated initial internal state value, derived from the `stateBuilder`.
    * This represents the state structure without top-level history wrappers,
@@ -199,10 +208,10 @@ export interface ScaluxToolkit<
   _notes?: "See Slice and Undoable imports";
 }
 
-// ────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
 // Internal factory – returns the full toolkit. Wrapped below by `State` so we can
 // export a named alias (`ScaluxToolkit`) without recursive type issues.
-// ────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────────
 
 const appUpdates: any = new GenericDictionary();
 const usedDomains = new Set<string>();
@@ -220,12 +229,13 @@ const _stateFactory = <
     : false;
 
   // --- Create Toolkit Components (similar to original code) ---
-  const selectors = mkSelectors<StateBuilder>(stateBuilder); // Keep type inference here
+  const selectors = mkSelectors<StateBuilder>(stateBuilder);
   const Thunk = mkThunk<State>();
   const Component = mkComponent<SlicedState, State, InternalState>(
     appUpdates,
     usedDomains
   );
+  const Conditional = mkConditional<State>();
   const Updater = mkUpdater<SlicedState, State, InternalState>();
   const Logic = mkLogic<State, InternalState>();
   const Labels = mkLabels<State>();
@@ -237,30 +247,28 @@ const _stateFactory = <
   // --- Return the Public API object matching the ScaluxToolkit interface ---
   return {
     Component,
-    register: mkRegister<
-      SlicedState,
-      State,
-      InternalState,
-      typeof selectors // Pass the *type* of the generated selectors
-    >(stateBuilder, appUpdates, selectors),
+    register: mkRegister<SlicedState, State, InternalState, typeof selectors>(
+      stateBuilder,
+      appUpdates,
+      selectors
+    ),
     Updater,
     Logic,
+    Conditional,
     Labels,
     Icons,
-    selectors, // Assign the generated selectors object
+    selectors,
     initData,
     Resolver,
     Thunk,
     undo: Thunk(() => (dispatch) => {
-      // Dispatch redux-undo's action, ensuring payload is undefined for consistency
       dispatch({ ...ActionCreators.undo(), payload: undefined });
     }),
     redo: Thunk(() => (dispatch) => {
-      // Dispatch redux-undo's action, ensuring payload is undefined for consistency
       dispatch({ ...ActionCreators.redo(), payload: undefined });
     }),
     mkLogger,
-  } as ScaluxToolkit<StateBuilder>; // Use type assertion to ensure conformity
+  } as ScaluxToolkit<StateBuilder>;
 };
 
 /**
@@ -278,25 +286,5 @@ const _stateFactory = <
  * @template InternalState The inferred Internal State type (without root history wrappers).
  * @param stateBuilder The initial state configuration object. Must satisfy `HomogeneousState`.
  * @returns An object containing the `Scalux` builders and utilities, typed for the specific state structure.
- * @example
- * // Simple State
- * const { Component, Updater, register, initData } = State({ count: 0, user: null });
- * console.log(initData); // { count: 0, user: null }
- *
- * // Root Undoable State
- * const { Component, Updater, register, undo, redo, initData } = State(Undoable({ value: "a" }));
- * console.log(initData); // { value: "a" }
- *
- * // Sliced State
- * const { Component, Updater, register, selectors, Slice, initData, mkLogger } = State({
- * ui: Slice({ theme: 'light' }),
- * data: Slice(Undoable({ items: [] })) // Data slice with history
- * });
- * console.log(initData); // { ui: { theme: 'light' }, data: { items: [] } }
- * const theme = selectors.pick.ui.theme(store.getState());
- * const items = selectors.pick.data.items(store.getState()); // Accesses data.present.items
- * const historyData = selectors.rawGrab.data(store.getState()); // Accesses full { present, past, future }
- * const themeLogger = mkLogger(state => state.ui.theme, 'UI Theme');
- * // Add themeLogger to store middleware
  */
 export const State = _stateFactory;
