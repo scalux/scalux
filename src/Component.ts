@@ -87,7 +87,7 @@ const mkComponentData = <
   State,
   Props extends Obj,
   Data extends DataBuilder<State, DataProps<Props>>,
-  OwnProps = any
+  OwnProps = OwnPropsBuilder<State, DataProps<Props>, Data>
 >(
   builder: Data
 ): ((state: State, ownProps: OwnProps) => DataProps<Props>) => {
@@ -95,9 +95,26 @@ const mkComponentData = <
     const staticDataFn = mkGetConstantValue(builder) as () => Partial<
       DataProps<Props>
     >;
-    return mkMapStateToProps(staticDataFn) as any;
+
+    let lastOwnProps: OwnProps | undefined;
+    let lastResult: DataProps<Props> | undefined; // Stocke le résultat complet
+
+    return (_state: State, ownProps: OwnProps): DataProps<Props> => {
+      if (lastOwnProps === ownProps && lastResult !== undefined) {
+        return lastResult;
+      }
+      lastOwnProps = ownProps;
+      lastResult = { ...staticDataFn(), ...ownProps } as DataProps<Props>;
+      return lastResult;
+    };
+  } else {
+    const functionalMapper = builder as (
+      state: State,
+      ownProps: OwnProps
+    ) => DataProps<Props>;
+
+    return functionalMapper;
   }
-  return mkMapStateToProps(builder as any);
 };
 
 type ComponentBuilderConfig<

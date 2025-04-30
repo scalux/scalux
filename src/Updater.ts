@@ -29,14 +29,10 @@ type ResolveUpdaterBuilder<
   >;
 };
 
-type InlineTreeUpdater<
-  State,
-  InternalState,
-  Payload,
-  UpdaterReturn extends
-    | UpdateTree<InternalState>
-    | Promise<UpdateTree<InternalState>>
-> = (state: State, payload: Payload) => UpdaterReturn;
+type InlineTreeUpdater<State, InternalState, Payload> = (
+  state: State,
+  payload: Payload
+) => UpdateTree<InternalState> | Promise<UpdateTree<InternalState>>;
 
 type TreeUpdater<State, Payload, UpdaterReturn> = {
   kind: "TreeUpdater";
@@ -64,10 +60,7 @@ type UpdaterBuilder<
   State,
   InternalState,
   Payload,
-  ResolveReturn,
-  UpdateReturn extends
-    | UpdateTree<InternalState>
-    | Promise<UpdateTree<InternalState>>
+  ResolveReturn
 > =
   | ResolveUpdaterBuilder<
       SlicedState,
@@ -76,7 +69,7 @@ type UpdaterBuilder<
       Payload,
       ResolveReturn
     >
-  | InlineTreeUpdater<State, InternalState, Payload, UpdateReturn>;
+  | InlineTreeUpdater<State, InternalState, Payload>;
 
 type Updater<
   SlicedState extends boolean,
@@ -107,7 +100,7 @@ type ComponentUpdater<
       ResolveReturn,
       UpdaterReturn
     >
-  | InlineTreeUpdater<State, InternalState, Payload, UpdaterReturn>;
+  | InlineTreeUpdater<State, InternalState, Payload>;
 
 const mkUpdater =
   <SlicedState extends boolean, State, InternalState>() =>
@@ -123,8 +116,7 @@ const mkUpdater =
       State,
       InternalState,
       Payload,
-      ResolveReturn,
-      UpdateReturn
+      ResolveReturn
     >
   ): IsUnknown<ResolveReturn> extends true
     ? TreeUpdater<State, Payload, UpdateReturn>
