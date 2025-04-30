@@ -79,7 +79,7 @@ type ComponentHandlers<
 
 const isInlineTreeUpdater = <State, InternalState, Payload>(
   builder: ComponentHandler<any, State, InternalState, Payload, any, any>
-): builder is InlineTreeUpdater<State, InternalState, Payload, any> =>
+): builder is InlineTreeUpdater<State, InternalState, Payload> =>
   typeof builder === "function";
 
 const isExternalTreeUpdater = <State, InternalState, Payload>(
